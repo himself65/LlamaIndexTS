@@ -167,6 +167,9 @@ importers:
       '@trpc/server':
         specifier: ^10.43.6
         version: 10.45.0
+      chromadb-default-embed:
+        specifier: ^2.13.2
+        version: 2.13.2
       llamaindex:
         specifier: npm:llamaindex@0.0.44
         version: 0.0.44
@@ -6431,6 +6434,16 @@ packages:
   /chownr@2.0.0:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
+
+  /chromadb-default-embed@2.13.2:
+    resolution: {integrity: sha512-mhqo5rLjkF2KkxAV0WS82vNIXWpVMzvz5y5ayIB2FxcebUbEBNlcRh6XSSqYChWMfJ9us1ZzLQU8RXqsy3sKaA==}
+    dependencies:
+      '@huggingface/jinja': 0.1.2
+      onnxruntime-web: 1.14.0
+      sharp: 0.32.6
+    optionalDependencies:
+      onnxruntime-node: 1.14.0
+    dev: false
 
   /chromadb@1.7.3(openai@4.26.0):
     resolution: {integrity: sha512-3GgvQjpqgk5C89x5EuTDaXKbfrdqYDJ5UVyLQ3ZmwxnpetNc+HhRDGjkvXa5KSvpQ3lmKoyDoqnN4tZepfFkbw==}

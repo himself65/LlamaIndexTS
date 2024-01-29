@@ -9,9 +9,8 @@ export const postRouter = createTRPCRouter({
   ask: publicProcedure
     .input(z.object({ text: z.string() }))
     .query(async ({ input }) => {
-      const response = await openai.chat({
-        stream: false,
-        messages: [
+      const response = await openai.chat(
+        [
           {
             role: "system",
             content: "You are a helpful assistant",
@@ -21,7 +20,9 @@ export const postRouter = createTRPCRouter({
             content: input.text,
           },
         ],
-      });
+        undefined,
+        false,
+      );
       return {
         text: response.message.content,
       };
