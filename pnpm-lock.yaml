@@ -126,7 +126,7 @@ importers:
         version: 1.1.3
       chromadb:
         specifier: ^1.8.1
-        version: 1.8.1
+        version: 1.8.1(openai@4.26.0)
       commander:
         specifier: ^11.1.0
         version: 11.1.0
@@ -168,8 +168,8 @@ importers:
         specifier: ^10.43.6
         version: 10.45.0
       llamaindex:
-        specifier: npm:llamaindex@0.0.43
-        version: 0.0.43
+        specifier: npm:llamaindex@0.0.44
+        version: 0.0.44
       next:
         specifier: ^14.0.4
         version: 14.1.0(@babel/core@7.23.9)(react-dom@18.2.0)(react@18.2.0)
@@ -6454,7 +6454,7 @@ packages:
       - encoding
     dev: false
 
-  /chromadb@1.8.1:
+  /chromadb@1.8.1(openai@4.26.0):
     resolution: {integrity: sha512-NpbYydbg4Uqt/9BXKgkZXn0fqpsh2Z1yjhkhKH+rcHMoq0pwI18BFSU2QU7Fk/ZypwGefW2AvqyE/3ZJIgy4QA==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
@@ -6471,6 +6471,7 @@ packages:
     dependencies:
       cliui: 8.0.1
       isomorphic-fetch: 3.0.0
+      openai: 4.26.0
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -11085,8 +11086,8 @@ packages:
       wrap-ansi: 9.0.0
     dev: true
 
-  /llamaindex@0.0.43:
-    resolution: {integrity: sha512-W/eraTfPDsq+UAQvBhliKCKOXz6aV2g3wLWH+H3iy0Zc9ZOFPhWpzXwjYC01I1IOyOKpKUj1orgYn82uj2IgCg==}
+  /llamaindex@0.0.44:
+    resolution: {integrity: sha512-+yrodGHXp/XkCQJmjPh2WnhrHmN8qNZdsXHwhtic1B1fWBNOsLIgvgk+LA2t04bXx9LWKkmrqrkLpWtvufgH5g==}
     engines: {node: '>=18.0.0'}
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
@@ -11096,6 +11097,7 @@ packages:
       '@pinecone-database/pinecone': 1.1.3
       '@xenova/transformers': 2.14.2
       assemblyai: 4.2.1
+      chromadb: 1.8.1(openai@4.26.0)
       file-type: 18.7.0
       js-tiktoken: 1.0.8
       lodash: 4.17.21
@@ -11116,8 +11118,10 @@ packages:
       wink-nlp: 1.14.3
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
+      - '@google/generative-ai'
       - '@mongodb-js/zstd'
       - bufferutil
+      - cohere-ai
       - debug
       - encoding
       - gcp-metadata
