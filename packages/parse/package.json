@@ -1,0 +1,31 @@
+{
+  "name": "@llamaindex/parse",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bunchee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himself65/LlamaIndexTS.git",
+    "directory": "packages/parse"
+  },
+  "private": true,
+  "devDependencies": {
+    "bunchee": "^4.4.6",
+    "llamaindex": "workspace:*"
+  },
+  "peerDependencies": {
+    "llamaindex": "workspace:*"
+  }
+}
