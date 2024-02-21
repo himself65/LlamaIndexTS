@@ -1,10 +1,10 @@
 import pg from "pg";
 import pgvector from "pgvector/pg";
 
-import { VectorStore, VectorStoreQuery, VectorStoreQueryResult } from "./types";
+import type{ VectorStore, VectorStoreQuery, VectorStoreQueryResult } from "./types";
 
-import { BaseNode, Document, Metadata, MetadataMode } from "../../Node";
-import { GenericFileSystem } from "../FileSystem";
+import { BaseNode, Document, type Metadata, MetadataMode } from "../../Node";
+import type{ GenericFileSystem } from "../FileSystem";
 
 export const PGVECTOR_SCHEMA = "public";
 export const PGVECTOR_TABLE = "llamaindex_embedding";

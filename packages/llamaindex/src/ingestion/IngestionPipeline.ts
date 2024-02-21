@@ -1,5 +1,4 @@
 import { BaseNode, Document } from "../Node";
-import { BaseReader } from "../readers/type";
 import { BaseDocumentStore, VectorStore } from "../storage";
 import { IngestionCache, getTransformationHash } from "./IngestionCache";
 import { DocStoreStrategy, createDocStoreStrategy } from "./strategies";
@@ -45,7 +44,7 @@ export async function runTransformations(
 export class IngestionPipeline {
   transformations: TransformComponent[] = [];
   documents?: Document[];
-  reader?: BaseReader;
+  reader?: any;
   vectorStore?: VectorStore;
   docStore?: BaseDocumentStore;
   docStoreStrategy: DocStoreStrategy = DocStoreStrategy.UPSERTS;

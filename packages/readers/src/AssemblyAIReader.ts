@@ -1,13 +1,13 @@
 import {
   AssemblyAI,
-  BaseServiceParams,
-  SubtitleFormat,
-  TranscribeParams,
-  TranscriptParagraph,
-  TranscriptSentence,
+  type BaseServiceParams,
+  type SubtitleFormat,
+  type TranscribeParams,
+  type TranscriptParagraph,
+  type TranscriptSentence,
 } from "assemblyai";
-import { Document } from "../Node";
-import { BaseReader } from "./type";
+import { Document } from "llamaindex/Node";
+import type { BaseReader } from "./type";
 
 type AssemblyAIOptions = Partial<BaseServiceParams>;
 

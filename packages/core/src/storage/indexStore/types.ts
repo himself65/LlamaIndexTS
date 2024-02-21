@@ -1,5 +1,5 @@
 import { IndexStruct } from "../../indices/BaseIndex";
-import { GenericFileSystem } from "../FileSystem";
+import type { GenericFileSystem } from "../FileSystem";
 import {
   DEFAULT_INDEX_STORE_PERSIST_FILENAME,
   DEFAULT_PERSIST_DIR,

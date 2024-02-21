@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client";
-import { crawler, Crawler, Pages, pageToString } from "notion-md-crawler";
-import { Document } from "../Node";
-import { BaseReader } from "./type";
+import { crawler, type Crawler, type Pages, pageToString } from "notion-md-crawler";
+import { Document } from "llamaindex/Node";
+import type { BaseReader } from "./type";
 
 type OptionalSerializers = Parameters<Crawler>[number]["serializers"];
 

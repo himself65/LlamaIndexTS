@@ -1,4 +1,4 @@
-import {
+import type {
   ExactMatchFilter,
   MetadataFilters,
   VectorStore,
@@ -6,14 +6,14 @@ import {
   VectorStoreQueryResult,
 } from "./types";
 
-import { BaseNode, Document, Metadata, MetadataMode } from "../../Node";
-import { GenericFileSystem } from "../FileSystem";
+import { BaseNode, Document, type Metadata, MetadataMode } from "../../Node";
+import type { GenericFileSystem } from "../FileSystem";
 
 import {
-  FetchResponse,
+  type FetchResponse,
   Index,
   Pinecone,
-  ScoredPineconeRecord,
+  type ScoredPineconeRecord,
 } from "@pinecone-database/pinecone";
 
 type PineconeParams = {

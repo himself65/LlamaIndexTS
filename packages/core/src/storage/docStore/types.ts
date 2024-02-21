@@ -3,7 +3,7 @@ import {
   DEFAULT_DOC_STORE_PERSIST_FILENAME,
   DEFAULT_PERSIST_DIR,
 } from "../constants";
-import { GenericFileSystem } from "../FileSystem";
+import type { GenericFileSystem } from "../FileSystem";
 
 const defaultPersistPath = `${DEFAULT_PERSIST_DIR}/${DEFAULT_DOC_STORE_PERSIST_FILENAME}`;
 

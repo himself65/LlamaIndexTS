@@ -1,8 +1,8 @@
 import { AstraDB } from "@datastax/astra-db-ts";
 import { Collection } from "@datastax/astra-db-ts/dist/collections";
-import { CreateCollectionOptions } from "@datastax/astra-db-ts/dist/collections/options";
+import type { CreateCollectionOptions } from "@datastax/astra-db-ts/dist/collections/options";
 import { BaseNode, MetadataMode } from "../../Node";
-import { VectorStore, VectorStoreQuery, VectorStoreQueryResult } from "./types";
+import type { VectorStore, VectorStoreQuery, VectorStoreQueryResult } from "./types";
 import { metadataDictToNode, nodeToMetadata } from "./utils";
 
 const MAX_INSERT_BATCH_SIZE = 20;

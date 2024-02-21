@@ -1,8 +1,8 @@
-import Papa, { ParseConfig } from "papaparse";
-import { Document } from "../Node";
-import { defaultFS } from "../env";
-import { GenericFileSystem } from "../storage/FileSystem";
-import { FileReader } from "./type";
+import Papa, { type ParseConfig } from "papaparse";
+import { Document } from "llamaindex/Node";
+import { defaultFS } from "llamaindex/env";
+import type { GenericFileSystem } from "llamaindex";
+import type { FileReader } from "./type";
 
 /**
  * papaparse-based csv parser

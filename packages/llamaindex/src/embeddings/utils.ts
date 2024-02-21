@@ -1,8 +1,8 @@
 import _ from "lodash";
-import { ImageType } from "../Node";
-import { DEFAULT_SIMILARITY_TOP_K } from "../constants";
-import { defaultFS } from "../env";
-import { VectorStoreQueryMode } from "../storage/vectorStore/types";
+import { ImageType } from "@llamaindex/core";
+import { DEFAULT_SIMILARITY_TOP_K } from "@llamaindex/core";
+import { defaultFS } from "@llamaindex/core/env";
+import { VectorStoreQueryMode } from "@llamaindex/constant/storage/vectorStore/types";
 
 /**
  * Similarity type

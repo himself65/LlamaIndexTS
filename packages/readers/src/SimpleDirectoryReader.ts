@@ -1,13 +1,13 @@
-import { Document } from "../Node";
-import { defaultFS, path } from "../env";
-import { CompleteFileSystem, walk } from "../storage/FileSystem";
+import { Document } from "llamaindex/Node";
+import { defaultFS, path } from "@llamaindex/core/env";
+import { type CompleteFileSystem, walk } from "llamaindex";
 import { PapaCSVReader } from "./CSVReader";
 import { DocxReader } from "./DocxReader";
 import { HTMLReader } from "./HTMLReader";
 import { ImageReader } from "./ImageReader";
 import { MarkdownReader } from "./MarkdownReader";
 import { PDFReader } from "./PDFReader";
-import { BaseReader } from "./type";
+import type  { BaseReader } from "./type";
 
 type ReaderCallback = (
   category: "file" | "directory",

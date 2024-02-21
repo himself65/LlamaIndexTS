@@ -1,6 +1,6 @@
 import { MongoClient } from "mongodb";
-import { Document, Metadata } from "../Node";
-import { BaseReader } from "./type";
+import { Document, type Metadata } from "llamaindex/Node";
+import type { BaseReader } from "./type";
 
 /**
  * Read in from MongoDB

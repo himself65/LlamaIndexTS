@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { defaultFS, path } from "../../env";
-import { GenericFileSystem } from "../FileSystem";
+import type { GenericFileSystem } from "../FileSystem";
 import {
   DEFAULT_DOC_STORE_PERSIST_FILENAME,
   DEFAULT_NAMESPACE,

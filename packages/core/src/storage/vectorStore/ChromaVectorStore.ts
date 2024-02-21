@@ -1,19 +1,19 @@
 import {
-  AddParams,
+  type AddParams,
   ChromaClient,
-  ChromaClientParams,
+  type ChromaClientParams,
   Collection,
   IncludeEnum,
-  QueryResponse,
-  Where,
-  WhereDocument,
+  type QueryResponse,
+  type Where,
+  type WhereDocument,
 } from "chromadb";
 import { BaseNode, MetadataMode } from "../../Node";
 import {
-  VectorStore,
-  VectorStoreQuery,
+  type VectorStore,
+  type VectorStoreQuery,
   VectorStoreQueryMode,
-  VectorStoreQueryResult,
+  type VectorStoreQueryResult,
 } from "./types";
 import { metadataDictToNode, nodeToMetadata } from "./utils";
 

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./lib/",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "preserveWatchOutput": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "lib": ["es2015", "dom"],
+    "target": "ES2015",
+    "resolveJsonModule": true
+  },
+  "references": [{
+    "path": "../readers/tsconfig.json"
+  }],
+  "include": ["./src"],
+  "exclude": ["node_modules"]
+}

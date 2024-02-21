@@ -1,6 +1,6 @@
-import { BulkWriteOptions, Collection, MongoClient } from "mongodb";
+import { type BulkWriteOptions, Collection, MongoClient } from "mongodb";
 import { BaseNode, MetadataMode } from "../../Node";
-import {
+import type {
   MetadataFilters,
   VectorStore,
   VectorStoreQuery,

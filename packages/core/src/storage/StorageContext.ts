@@ -1,12 +1,12 @@
 import { defaultFS, path } from "../env";
-import { GenericFileSystem } from "./FileSystem";
+import type { GenericFileSystem } from "./FileSystem";
 import { DEFAULT_IMAGE_VECTOR_NAMESPACE, DEFAULT_NAMESPACE } from "./constants";
 import { SimpleDocumentStore } from "./docStore/SimpleDocumentStore";
 import { BaseDocumentStore } from "./docStore/types";
 import { SimpleIndexStore } from "./indexStore/SimpleIndexStore";
 import { BaseIndexStore } from "./indexStore/types";
 import { SimpleVectorStore } from "./vectorStore/SimpleVectorStore";
-import { VectorStore } from "./vectorStore/types";
+import type { VectorStore } from "./vectorStore/types";
 
 export interface StorageContext {
   docStore: BaseDocumentStore;

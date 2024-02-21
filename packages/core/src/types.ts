@@ -1,85 +1,83 @@
-/**
- * Top level types to avoid circular dependencies
- */
-import { Event } from "./callbacks/CallbackManager";
-import { Response } from "./Response";
+import { BaseNode, MetadataMode } from "../Node";
+import { TransformComponent } from "../ingestion";
+import { SimilarityType, similarity } from "./utils";
 
-/**
- * Parameters for sending a query.
- */
-export interface QueryEngineParamsBase {
-  query: string;
-  parentEvent?: Event;
-}
+const DEFAULT_EMBED_BATCH_SIZE = 10;
 
-export interface QueryEngineParamsStreaming extends QueryEngineParamsBase {
-  stream: true;
-}
+export abstract class BaseEmbedding implements TransformComponent {
+  embedBatchSize = DEFAULT_EMBED_BATCH_SIZE;
 
-export interface QueryEngineParamsNonStreaming extends QueryEngineParamsBase {
-  stream?: false | null;
-}
-
-/**
- * A query engine is a question answerer that can use one or more steps.
- */
-export interface BaseQueryEngine {
-  /**
-   * Query the query engine and get a response.
-   * @param params
-   */
-  query(params: QueryEngineParamsStreaming): Promise<AsyncIterable<Response>>;
-  query(params: QueryEngineParamsNonStreaming): Promise<Response>;
-}
-
-/**
- * Simple Tool interface. Likely to change.
- */
-export interface BaseTool {
-  call?: (...args: any[]) => any;
-  metadata: ToolMetadata;
-}
-
-/**
- * An OutputParser is used to extract structured data from the raw output of the LLM.
- */
-export interface BaseOutputParser<T> {
-  parse(output: string): T;
-
-  format(output: string): string;
-}
-
-/**
- * StructuredOutput is just a combo of the raw output and the parsed output.
- */
-export interface StructuredOutput<T> {
-  rawOutput: string;
-  parsedOutput: T;
-}
-
-export type ToolParameters = {
-  type: string | "object";
-  properties: Record<string, { type: string; description?: string }>;
-  required?: string[];
-};
-
-export interface ToolMetadata {
-  description: string;
-  name: string;
-  parameters?: ToolParameters;
-  argsKwargs?: Record<string, any>;
-}
-
-export type ToolMetadataOnlyDescription = Pick<ToolMetadata, "description">;
-
-export class QueryBundle {
-  queryStr: string;
-
-  constructor(queryStr: string) {
-    this.queryStr = queryStr;
+  similarity(
+    embedding1: number[],
+    embedding2: number[],
+    mode: SimilarityType = SimilarityType.DEFAULT,
+  ): number {
+    return similarity(embedding1, embedding2, mode);
   }
 
-  toString(): string {
-    return this.queryStr;
+  abstract getTextEmbedding(text: string): Promise<number[]>;
+  abstract getQueryEmbedding(query: string): Promise<number[]>;
+
+  /**
+   * Optionally override this method to retrieve multiple embeddings in a single request
+   * @param texts
+   */
+  async getTextEmbeddings(texts: string[]): Promise<Array<number[]>> {
+    const embeddings: number[][] = [];
+
+    for (const text of texts) {
+      const embedding = await this.getTextEmbedding(text);
+      embeddings.push(embedding);
+    }
+
+    return embeddings;
+  }
+
+  /**
+   * Get embeddings for a batch of texts
+   * @param texts
+   * @param options
+   */
+  async getTextEmbeddingsBatch(
+    texts: string[],
+    options?: {
+      logProgress?: boolean;
+    },
+  ): Promise<Array<number[]>> {
+    const resultEmbeddings: Array<number[]> = [];
+    const chunkSize = this.embedBatchSize;
+
+    const queue: string[] = texts;
+
+    const curBatch: string[] = [];
+
+    for (let i = 0; i < queue.length; i++) {
+      curBatch.push(queue[i]);
+      if (i == queue.length - 1 || curBatch.length == chunkSize) {
+        const embeddings = await this.getTextEmbeddings(curBatch);
+
+        resultEmbeddings.push(...embeddings);
+
+        if (options?.logProgress) {
+          console.log(`getting embedding progress: ${i} / ${queue.length}`);
+        }
+
+        curBatch.length = 0;
+      }
+    }
+
+    return resultEmbeddings;
+  }
+
+  async transform(nodes: BaseNode[], _options?: any): Promise<BaseNode[]> {
+    const texts = nodes.map((node) => node.getContent(MetadataMode.EMBED));
+
+    const embeddings = await this.getTextEmbeddingsBatch(texts);
+
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].embedding = embeddings[i];
+    }
+
+    return nodes;
   }
 }

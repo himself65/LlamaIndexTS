@@ -1,5 +1,4 @@
-import { ChatMessage } from "../../llm";
-import { BaseChatStore } from "./types";
+import type { BaseChatStore, ChatMessage } from './types'
 
 /**
  * Simple chat store.

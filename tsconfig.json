@@ -21,7 +21,7 @@
       "path": "./packages/core"
     },
     {
-      "path": "./packages/parse"
+      "path": "./packages/readers"
     },
     {
       "path": "./packages/create-llama"
