@@ -1,6 +1,16 @@
+const { resolve } = require("node:path");
+
 module.exports = {
-  extends: ["next", "turbo", "prettier"],
+  parser: "@typescript-eslint/parser",
+  plugins: ["@typescript-eslint"],
+  extends: [
+    "next",
+    "turbo",
+    "prettier",
+    "plugin:@typescript-eslint/recommended-type-checked",
+  ],
   rules: {
+    "@typescript-eslint/consistent-type-imports": "error",
     "@next/next/no-html-link-for-pages": "off",
     "turbo/no-undeclared-env-vars": [
       "error",
@@ -67,6 +77,14 @@ module.exports = {
   // understanding how turborepo is supposed to work.
   // Anyways, planning to add back a Next.JS example soon
   parserOptions: {
+    project: [
+      "./tsconfig.eslint.json",
+      "./packages/*/tsconfig.json",
+      "./examples/*/tsconfig.json",
+      "./examples/tsconfig.json",
+      "./apps/*/tsconfig.json",
+    ],
+    tsconfigRootDir: resolve(__dirname, "..", ".."),
     babelOptions: {
       presets: [require.resolve("next/babel")],
     },
