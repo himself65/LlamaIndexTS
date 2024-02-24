@@ -1,10 +1,11 @@
 import { StreamingTextResponse } from "ai";
-import { ChatMessage, MessageContent, OpenAI } from "llamaindex";
+import { OpenAI } from "llamaindex/llm/LLM";
+import type { ChatMessage, MessageContent } from "llamaindex/llm/types";
 import { NextRequest, NextResponse } from "next/server";
 import { createChatEngine } from "./engine";
 import { LlamaIndexStream } from "./llamaindex-stream";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 const convertMessageContent = (

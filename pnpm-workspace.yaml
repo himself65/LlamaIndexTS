@@ -2,5 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
   - "packages/core/tests"
+  - "packages/create-llama/templates/**"
   - "examples/"
   - "examples/*"

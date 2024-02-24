@@ -1,12 +1,12 @@
 import {
+  AIStreamCallbacksAndOptions,
   JSONValue,
   createCallbacksTransformer,
   createStreamDataTransformer,
   experimental_StreamData,
   trimStartOfStreamHelper,
-  type AIStreamCallbacksAndOptions,
 } from "ai";
-import { Response } from "llamaindex";
+import { Response } from "llamaindex/Response";
 
 type ParserOptions = {
   image_url?: string;
