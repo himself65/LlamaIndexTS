@@ -89,7 +89,7 @@
         ],
         "default": [
           "./dist/cjs/*.js",
-          "./dist/cjs/*.js"
+          "./dist/cjs/*/index.js"
         ]
       }
     }
