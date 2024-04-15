@@ -1,31 +1,50 @@
-import { SubQuestionOutputParser } from "./OutputParser";
-import {
-  SubQuestionPrompt,
-  buildToolsText,
-  defaultSubQuestionPrompt,
-} from "./Prompt";
-import { OpenAI } from "./llm/LLM";
-import { LLM } from "./llm/types";
-import {
-  BaseOutputParser,
+import { SubQuestionOutputParser } from "./OutputParser.js";
+import type { SubQuestionPrompt } from "./Prompt.js";
+import { buildToolsText, defaultSubQuestionPrompt } from "./Prompt.js";
+import type {
   BaseQuestionGenerator,
-  StructuredOutput,
   SubQuestion,
+} from "./engines/query/types.js";
+import { OpenAI } from "./llm/open_ai.js";
+import type { LLM } from "./llm/types.js";
+import { PromptMixin } from "./prompts/index.js";
+import type {
+  BaseOutputParser,
+  StructuredOutput,
   ToolMetadata,
-} from "./types";
+} from "./types.js";
 
 /**
  * LLMQuestionGenerator uses the LLM to generate new questions for the LLM using tools and a user query.
  */
-export class LLMQuestionGenerator implements BaseQuestionGenerator {
+export class LLMQuestionGenerator
+  extends PromptMixin
+  implements BaseQuestionGenerator
+{
   llm: LLM;
   prompt: SubQuestionPrompt;
   outputParser: BaseOutputParser<StructuredOutput<SubQuestion[]>>;
 
   constructor(init?: Partial<LLMQuestionGenerator>) {
+    super();
+
     this.llm = init?.llm ?? new OpenAI();
     this.prompt = init?.prompt ?? defaultSubQuestionPrompt;
     this.outputParser = init?.outputParser ?? new SubQuestionOutputParser();
+  }
+
+  protected _getPrompts(): { [x: string]: SubQuestionPrompt } {
+    return {
+      subQuestion: this.prompt,
+    };
+  }
+
+  protected _updatePrompts(promptsDict: {
+    subQuestion: SubQuestionPrompt;
+  }): void {
+    if ("subQuestion" in promptsDict) {
+      this.prompt = promptsDict.subQuestion;
+    }
   }
 
   async generate(tools: ToolMetadata[], query: string): Promise<SubQuestion[]> {

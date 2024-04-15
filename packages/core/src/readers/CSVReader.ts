@@ -1,15 +1,16 @@
-import Papa, { ParseConfig } from "papaparse";
-import { Document } from "../Node";
-import { defaultFS } from "../env";
-import { GenericFileSystem } from "../storage/FileSystem";
-import { BaseReader } from "./base";
+import type { GenericFileSystem } from "@llamaindex/env";
+import { defaultFS } from "@llamaindex/env";
+import type { ParseConfig } from "papaparse";
+import Papa from "papaparse";
+import { Document } from "../Node.js";
+import type { FileReader } from "./type.js";
 
 /**
  * papaparse-based csv parser
  * @class CSVReader
  * @implements BaseReader
  */
-export class PapaCSVReader implements BaseReader {
+export class PapaCSVReader implements FileReader {
   private concatRows: boolean;
   private colJoiner: string;
   private rowJoiner: string;
@@ -43,7 +44,7 @@ export class PapaCSVReader implements BaseReader {
     file: string,
     fs: GenericFileSystem = defaultFS,
   ): Promise<Document[]> {
-    const fileContent: string = await fs.readFile(file, "utf-8");
+    const fileContent = await fs.readFile(file);
     const result = Papa.parse(fileContent, this.papaConfig);
     const textList = result.data.map((row: any) => {
       // Compatible with header row mode

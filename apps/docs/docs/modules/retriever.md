@@ -11,11 +11,11 @@ const retriever = vector_index.asRetriever();
 retriever.similarityTopK = 3;
 
 // Fetch nodes!
-const nodesWithScore = await retriever.retrieve("query string");
+const nodesWithScore = await retriever.retrieve({ query: "query string" });
 ```
 
 ## API Reference
 
-- [SummaryIndexRetriever](../../api/classes/SummaryIndexRetriever.md)
-- [SummaryIndexLLMRetriever](../../api/classes/SummaryIndexLLMRetriever.md)
-- [VectorIndexRetriever](../../api/classes/VectorIndexRetriever.md)
+- [SummaryIndexRetriever](../api/classes/SummaryIndexRetriever.md)
+- [SummaryIndexLLMRetriever](../api/classes/SummaryIndexLLMRetriever.md)
+- [VectorIndexRetriever](../api/classes/VectorIndexRetriever.md)

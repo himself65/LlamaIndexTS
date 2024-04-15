@@ -1,13 +1,13 @@
+import type { GenericFileSystem } from "@llamaindex/env";
+import { defaultFS, path } from "@llamaindex/env";
 import _ from "lodash";
-import { defaultFS, path } from "../../env";
-import { GenericFileSystem } from "../FileSystem";
 import {
   DEFAULT_DOC_STORE_PERSIST_FILENAME,
   DEFAULT_NAMESPACE,
   DEFAULT_PERSIST_DIR,
-} from "../constants";
-import { SimpleKVStore } from "../kvStore/SimpleKVStore";
-import { KVDocumentStore } from "./KVDocumentStore";
+} from "../constants.js";
+import { SimpleKVStore } from "../kvStore/SimpleKVStore.js";
+import { KVDocumentStore } from "./KVDocumentStore.js";
 
 type SaveDict = Record<string, any>;
 
@@ -54,7 +54,7 @@ export class SimpleDocumentStore extends KVDocumentStore {
     ),
     fs?: GenericFileSystem,
   ): Promise<void> {
-    fs = fs || DEFAULT_FS;
+    fs = fs || defaultFS;
     if (_.isObject(this.kvStore) && this.kvStore instanceof SimpleKVStore) {
       await this.kvStore.persist(persistPath, fs);
     }

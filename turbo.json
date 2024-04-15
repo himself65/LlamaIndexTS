@@ -6,8 +6,21 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**"]
     },
-    "lint": {},
-    "test": {},
+    "lint": {
+      "inputs": ["packages/eslint-config-custom"]
+    },
+    "@llamaindex/edge#build": {
+      "dependsOn": ["llamaindex#build"]
+    },
+    "@llamaindex/experimental#build": {
+      "dependsOn": ["@llamaindex/edge#build"]
+    },
+    "test": {
+      "dependsOn": ["^build", "@llamaindex/edge#build"]
+    },
+    "e2e": {
+      "dependsOn": ["^build"]
+    },
     "dev": {
       "cache": false,
       "persistent": true

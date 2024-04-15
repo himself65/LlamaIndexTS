@@ -1,4 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "packages/core/tests"
+  - "packages/core/e2e"
+  - "packages/edge/e2e/*"
   - "examples/"
+  - "examples/*"

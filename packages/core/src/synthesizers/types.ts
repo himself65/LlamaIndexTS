@@ -1,11 +1,10 @@
-import { Event } from "../callbacks/CallbackManager";
-import { NodeWithScore } from "../Node";
-import { Response } from "../Response";
+import type { NodeWithScore } from "../Node.js";
+import type { PromptMixin } from "../prompts/Mixin.js";
+import type { Response } from "../Response.js";
 
 export interface SynthesizeParamsBase {
   query: string;
   nodesWithScore: NodeWithScore[];
-  parentEvent?: Event;
 }
 
 export interface SynthesizeParamsStreaming extends SynthesizeParamsBase {
@@ -29,7 +28,6 @@ export interface BaseSynthesizer {
 export interface ResponseBuilderParamsBase {
   query: string;
   textChunks: string[];
-  parentEvent?: Event;
   prevResponse?: string;
 }
 
@@ -46,7 +44,7 @@ export interface ResponseBuilderParamsNonStreaming
 /**
  * A ResponseBuilder is used in a response synthesizer to generate a response from multiple response chunks.
  */
-export interface ResponseBuilder {
+export interface ResponseBuilder extends Partial<PromptMixin> {
   /**
    * Get the response from a query and a list of text chunks.
    * @param params

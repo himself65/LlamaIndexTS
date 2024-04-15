@@ -1,23 +1,23 @@
-import { ChatHistory, getHistory } from "../../ChatHistory";
+import type { ChatHistory } from "../../ChatHistory.js";
+import { getHistory } from "../../ChatHistory.js";
+import type { CondenseQuestionPrompt } from "../../Prompt.js";
 import {
-  CondenseQuestionPrompt,
   defaultCondenseQuestionPrompt,
   messagesToHistoryStr,
-} from "../../Prompt";
-import { Response } from "../../Response";
-import {
-  ServiceContext,
-  serviceContextFromDefaults,
-} from "../../ServiceContext";
-import { ChatMessage, LLM } from "../../llm";
-import { extractText, streamReducer } from "../../llm/utils";
-import { BaseQueryEngine } from "../../types";
-import {
+} from "../../Prompt.js";
+import type { Response } from "../../Response.js";
+import type { ServiceContext } from "../../ServiceContext.js";
+import { llmFromSettingsOrContext } from "../../Settings.js";
+import { wrapEventCaller } from "../../internal/context/EventCaller.js";
+import type { ChatMessage, LLM } from "../../llm/index.js";
+import { extractText, streamReducer } from "../../llm/utils.js";
+import { PromptMixin } from "../../prompts/index.js";
+import type { BaseQueryEngine } from "../../types.js";
+import type {
   ChatEngine,
   ChatEngineParamsNonStreaming,
   ChatEngineParamsStreaming,
-} from "./types";
-
+} from "./types.js";
 /**
  * CondenseQuestionChatEngine is used in conjunction with a Index (for example VectorStoreIndex).
  * It does two steps on taking a user's chat message: first, it condenses the chat message
@@ -29,7 +29,10 @@ import {
  * data, or are very referential to previous context.
  */
 
-export class CondenseQuestionChatEngine implements ChatEngine {
+export class CondenseQuestionChatEngine
+  extends PromptMixin
+  implements ChatEngine
+{
   queryEngine: BaseQueryEngine;
   chatHistory: ChatHistory;
   llm: LLM;
@@ -41,11 +44,27 @@ export class CondenseQuestionChatEngine implements ChatEngine {
     serviceContext?: ServiceContext;
     condenseMessagePrompt?: CondenseQuestionPrompt;
   }) {
+    super();
+
     this.queryEngine = init.queryEngine;
     this.chatHistory = getHistory(init?.chatHistory);
-    this.llm = init?.serviceContext?.llm ?? serviceContextFromDefaults().llm;
+    this.llm = llmFromSettingsOrContext(init?.serviceContext);
     this.condenseMessagePrompt =
       init?.condenseMessagePrompt ?? defaultCondenseQuestionPrompt;
+  }
+
+  protected _getPrompts(): { condenseMessagePrompt: CondenseQuestionPrompt } {
+    return {
+      condenseMessagePrompt: this.condenseMessagePrompt,
+    };
+  }
+
+  protected _updatePrompts(promptsDict: {
+    condenseMessagePrompt: CondenseQuestionPrompt;
+  }): void {
+    if (promptsDict.condenseMessagePrompt) {
+      this.condenseMessagePrompt = promptsDict.condenseMessagePrompt;
+    }
   }
 
   private async condenseQuestion(chatHistory: ChatHistory, question: string) {
@@ -54,7 +73,7 @@ export class CondenseQuestionChatEngine implements ChatEngine {
     );
 
     return this.llm.complete({
-      prompt: defaultCondenseQuestionPrompt({
+      prompt: this.condenseMessagePrompt({
         question: question,
         chatHistory: chatHistoryStr,
       }),
@@ -63,6 +82,7 @@ export class CondenseQuestionChatEngine implements ChatEngine {
 
   chat(params: ChatEngineParamsStreaming): Promise<AsyncIterable<Response>>;
   chat(params: ChatEngineParamsNonStreaming): Promise<Response>;
+  @wrapEventCaller
   async chat(
     params: ChatEngineParamsStreaming | ChatEngineParamsNonStreaming,
   ): Promise<Response | AsyncIterable<Response>> {

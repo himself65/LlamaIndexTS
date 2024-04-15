@@ -1,7 +1,7 @@
-import { Document } from "../Node";
-import { defaultFS } from "../env";
-import { GenericFileSystem } from "../storage";
-import { BaseReader } from "./base";
+import type { GenericFileSystem } from "@llamaindex/env";
+import { defaultFS } from "@llamaindex/env";
+import { Document } from "../Node.js";
+import type { FileReader } from "./type.js";
 
 type MarkdownTuple = [string | null, string];
 
@@ -9,7 +9,7 @@ type MarkdownTuple = [string | null, string];
  * Extract text from markdown files.
  * Returns dictionary with keys as headers and values as the text between headers.
  */
-export class MarkdownReader implements BaseReader {
+export class MarkdownReader implements FileReader {
   private _removeHyperlinks: boolean;
   private _removeImages: boolean;
 
@@ -92,7 +92,7 @@ export class MarkdownReader implements BaseReader {
     file: string,
     fs: GenericFileSystem = defaultFS,
   ): Promise<Document[]> {
-    const content = await fs.readFile(file, { encoding: "utf-8" });
+    const content = await fs.readFile(file);
     const tups = this.parseTups(content);
     const results: Document[] = [];
     for (const [header, value] of tups) {

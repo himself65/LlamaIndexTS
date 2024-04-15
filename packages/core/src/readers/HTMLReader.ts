@@ -1,7 +1,7 @@
-import { Document } from "../Node";
-import { defaultFS } from "../env";
-import { GenericFileSystem } from "../storage/FileSystem";
-import { BaseReader } from "./base";
+import type { GenericFileSystem } from "@llamaindex/env";
+import { defaultFS } from "@llamaindex/env";
+import { Document } from "../Node.js";
+import type { FileReader } from "./type.js";
 
 /**
  * Extract the significant text from an arbitrary HTML document.
@@ -10,7 +10,7 @@ import { BaseReader } from "./base";
  * All other tags are removed, and the inner text is kept intact.
  * Html entities (e.g., &amp;) are not decoded.
  */
-export class HTMLReader implements BaseReader {
+export class HTMLReader implements FileReader {
   /**
    * Public method for this reader.
    * Required by BaseReader interface.
@@ -22,7 +22,7 @@ export class HTMLReader implements BaseReader {
     file: string,
     fs: GenericFileSystem = defaultFS,
   ): Promise<Document[]> {
-    const dataBuffer = await fs.readFile(file, "utf-8");
+    const dataBuffer = await fs.readFile(file);
     const htmlOptions = this.getOptions();
     const content = await this.parseContent(dataBuffer, htmlOptions);
     return [new Document({ text: content, id_: file })];

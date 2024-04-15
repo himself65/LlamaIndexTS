@@ -1,34 +1,12 @@
-import OpenAILLM, { ClientOptions as OpenAIClientOptions } from "openai";
-import {
-  AnthropicStreamToken,
-  CallbackManager,
-  Event,
-  EventType,
-  OpenAIStreamToken,
-  StreamCallbackResponse,
-} from "../callbacks/CallbackManager";
+import { type StreamCallbackResponse } from "../callbacks/CallbackManager.js";
 
-import { ChatCompletionMessageParam } from "openai/resources";
-import { LLMOptions } from "portkey-ai";
-import { Tokenizers, globalsHelper } from "../GlobalsHelper";
-import {
-  ANTHROPIC_AI_PROMPT,
-  ANTHROPIC_HUMAN_PROMPT,
-  AnthropicSession,
-  getAnthropicSession,
-} from "./anthropic";
-import {
-  AzureOpenAIConfig,
-  getAzureBaseUrl,
-  getAzureConfigFromEnv,
-  getAzureModel,
-  shouldUseAzure,
-} from "./azure";
-import { BaseLLM } from "./base";
-import { OpenAISession, getOpenAISession } from "./open_ai";
-import { PortkeySession, getPortkeySession } from "./portkey";
-import { ReplicateSession } from "./replicate_ai";
-import {
+import type { LLMOptions } from "portkey-ai";
+import { getCallbackManager } from "../internal/settings/CallbackManager.js";
+import { BaseLLM } from "./base.js";
+import type { PortkeySession } from "./portkey.js";
+import { getPortkeySession } from "./portkey.js";
+import { ReplicateSession } from "./replicate_ai.js";
+import type {
   ChatMessage,
   ChatResponse,
   ChatResponseChunk,
@@ -36,268 +14,8 @@ import {
   LLMChatParamsStreaming,
   LLMMetadata,
   MessageType,
-} from "./types";
-
-export const GPT4_MODELS = {
-  "gpt-4": { contextWindow: 8192 },
-  "gpt-4-32k": { contextWindow: 32768 },
-  "gpt-4-32k-0613": { contextWindow: 32768 },
-  "gpt-4-turbo-preview": { contextWindow: 128000 },
-  "gpt-4-1106-preview": { contextWindow: 128000 },
-  "gpt-4-0125-preview": { contextWindow: 128000 },
-  "gpt-4-vision-preview": { contextWindow: 128000 },
-};
-
-// NOTE we don't currently support gpt-3.5-turbo-instruct and don't plan to in the near future
-export const GPT35_MODELS = {
-  "gpt-3.5-turbo": { contextWindow: 4096 },
-  "gpt-3.5-turbo-0613": { contextWindow: 4096 },
-  "gpt-3.5-turbo-16k": { contextWindow: 16384 },
-  "gpt-3.5-turbo-16k-0613": { contextWindow: 16384 },
-  "gpt-3.5-turbo-1106": { contextWindow: 16384 },
-  "gpt-3.5-turbo-0125": { contextWindow: 16384 },
-};
-
-/**
- * We currently support GPT-3.5 and GPT-4 models
- */
-export const ALL_AVAILABLE_OPENAI_MODELS = {
-  ...GPT4_MODELS,
-  ...GPT35_MODELS,
-};
-
-/**
- * OpenAI LLM implementation
- */
-export class OpenAI extends BaseLLM {
-  // Per completion OpenAI params
-  model: keyof typeof ALL_AVAILABLE_OPENAI_MODELS | string;
-  temperature: number;
-  topP: number;
-  maxTokens?: number;
-  additionalChatOptions?: Omit<
-    Partial<OpenAILLM.Chat.ChatCompletionCreateParams>,
-    "max_tokens" | "messages" | "model" | "temperature" | "top_p" | "stream"
-  >;
-
-  // OpenAI session params
-  apiKey?: string = undefined;
-  maxRetries: number;
-  timeout?: number;
-  session: OpenAISession;
-  additionalSessionOptions?: Omit<
-    Partial<OpenAIClientOptions>,
-    "apiKey" | "maxRetries" | "timeout"
-  >;
-
-  callbackManager?: CallbackManager;
-
-  constructor(
-    init?: Partial<OpenAI> & {
-      azure?: AzureOpenAIConfig;
-    },
-  ) {
-    super();
-    this.model = init?.model ?? "gpt-3.5-turbo";
-    this.temperature = init?.temperature ?? 0.1;
-    this.topP = init?.topP ?? 1;
-    this.maxTokens = init?.maxTokens ?? undefined;
-
-    this.maxRetries = init?.maxRetries ?? 10;
-    this.timeout = init?.timeout ?? 60 * 1000; // Default is 60 seconds
-    this.additionalChatOptions = init?.additionalChatOptions;
-    this.additionalSessionOptions = init?.additionalSessionOptions;
-
-    if (init?.azure || shouldUseAzure()) {
-      const azureConfig = getAzureConfigFromEnv({
-        ...init?.azure,
-        model: getAzureModel(this.model),
-      });
-
-      if (!azureConfig.apiKey) {
-        throw new Error(
-          "Azure API key is required for OpenAI Azure models. Please set the AZURE_OPENAI_KEY environment variable.",
-        );
-      }
-
-      this.apiKey = azureConfig.apiKey;
-      this.session =
-        init?.session ??
-        getOpenAISession({
-          azure: true,
-          apiKey: this.apiKey,
-          baseURL: getAzureBaseUrl(azureConfig),
-          maxRetries: this.maxRetries,
-          timeout: this.timeout,
-          defaultQuery: { "api-version": azureConfig.apiVersion },
-          ...this.additionalSessionOptions,
-        });
-    } else {
-      this.apiKey = init?.apiKey ?? undefined;
-      this.session =
-        init?.session ??
-        getOpenAISession({
-          apiKey: this.apiKey,
-          maxRetries: this.maxRetries,
-          timeout: this.timeout,
-          ...this.additionalSessionOptions,
-        });
-    }
-
-    this.callbackManager = init?.callbackManager;
-  }
-
-  get metadata() {
-    const contextWindow =
-      ALL_AVAILABLE_OPENAI_MODELS[
-        this.model as keyof typeof ALL_AVAILABLE_OPENAI_MODELS
-      ]?.contextWindow ?? 1024;
-    return {
-      model: this.model,
-      temperature: this.temperature,
-      topP: this.topP,
-      maxTokens: this.maxTokens,
-      contextWindow,
-      tokenizer: Tokenizers.CL100K_BASE,
-    };
-  }
-
-  tokens(messages: ChatMessage[]): number {
-    // for latest OpenAI models, see https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
-    const tokenizer = globalsHelper.tokenizer(this.metadata.tokenizer);
-    const tokensPerMessage = 3;
-    let numTokens = 0;
-    for (const message of messages) {
-      numTokens += tokensPerMessage;
-      for (const value of Object.values(message)) {
-        numTokens += tokenizer(value).length;
-      }
-    }
-    numTokens += 3; // every reply is primed with <|im_start|>assistant<|im_sep|>
-    return numTokens;
-  }
-
-  mapMessageType(
-    messageType: MessageType,
-  ): "user" | "assistant" | "system" | "function" {
-    switch (messageType) {
-      case "user":
-        return "user";
-      case "assistant":
-        return "assistant";
-      case "system":
-        return "system";
-      case "function":
-        return "function";
-      default:
-        return "user";
-    }
-  }
-
-  chat(
-    params: LLMChatParamsStreaming,
-  ): Promise<AsyncIterable<ChatResponseChunk>>;
-  chat(params: LLMChatParamsNonStreaming): Promise<ChatResponse>;
-  async chat(
-    params: LLMChatParamsNonStreaming | LLMChatParamsStreaming,
-  ): Promise<ChatResponse | AsyncIterable<ChatResponseChunk>> {
-    const { messages, parentEvent, stream } = params;
-    const baseRequestParams: OpenAILLM.Chat.ChatCompletionCreateParams = {
-      model: this.model,
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      messages: messages.map(
-        (message) =>
-          ({
-            role: this.mapMessageType(message.role),
-            content: message.content,
-          }) as ChatCompletionMessageParam,
-      ),
-      top_p: this.topP,
-      ...this.additionalChatOptions,
-    };
-    // Streaming
-    if (stream) {
-      return this.streamChat(params);
-    }
-    // Non-streaming
-    const response = await this.session.openai.chat.completions.create({
-      ...baseRequestParams,
-      stream: false,
-    });
-
-    const content = response.choices[0].message?.content ?? "";
-    return {
-      message: { content, role: response.choices[0].message.role },
-    };
-  }
-
-  protected async *streamChat({
-    messages,
-    parentEvent,
-  }: LLMChatParamsStreaming): AsyncIterable<ChatResponseChunk> {
-    const baseRequestParams: OpenAILLM.Chat.ChatCompletionCreateParams = {
-      model: this.model,
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      messages: messages.map(
-        (message) =>
-          ({
-            role: this.mapMessageType(message.role),
-            content: message.content,
-          }) as ChatCompletionMessageParam,
-      ),
-      top_p: this.topP,
-      ...this.additionalChatOptions,
-    };
-
-    //Now let's wrap our stream in a callback
-    const onLLMStream = this.callbackManager?.onLLMStream
-      ? this.callbackManager.onLLMStream
-      : () => {};
-
-    const chunk_stream: AsyncIterable<OpenAIStreamToken> =
-      await this.session.openai.chat.completions.create({
-        ...baseRequestParams,
-        stream: true,
-      });
-
-    const event: Event = parentEvent
-      ? parentEvent
-      : {
-          id: "unspecified",
-          type: "llmPredict" as EventType,
-        };
-
-    // TODO: add callback to streamConverter and use streamConverter here
-    //Indices
-    var idx_counter: number = 0;
-    for await (const part of chunk_stream) {
-      if (!part.choices.length) continue;
-
-      //Increment
-      part.choices[0].index = idx_counter;
-      const is_done: boolean =
-        part.choices[0].finish_reason === "stop" ? true : false;
-      //onLLMStream Callback
-
-      const stream_callback: StreamCallbackResponse = {
-        event: event,
-        index: idx_counter,
-        isDone: is_done,
-        token: part,
-      };
-      onLLMStream(stream_callback);
-
-      idx_counter++;
-
-      yield {
-        delta: part.choices[0].delta.content ?? "",
-      };
-    }
-    return;
-  }
-}
+} from "./types.js";
+import { extractText, wrapLLMEvent } from "./utils.js";
 
 export const ALL_AVAILABLE_LLAMADEUCE_MODELS = {
   "Llama-2-70b-chat-old": {
@@ -376,10 +94,6 @@ export class LlamaDeuce extends BaseLLM {
       init?.maxTokens ??
       ALL_AVAILABLE_LLAMADEUCE_MODELS[this.model].contextWindow; // For Replicate, the default is 500 tokens which is too low.
     this.replicateSession = init?.replicateSession ?? new ReplicateSession();
-  }
-
-  tokens(messages: ChatMessage[]): number {
-    throw new Error("Method not implemented.");
   }
 
   get metadata() {
@@ -501,16 +215,15 @@ If a question does not make any sense, or is not factually coherent, explain why
 
     return {
       prompt: messages.reduce((acc, message, index) => {
+        const content = extractText(message.content);
         if (index % 2 === 0) {
           return (
-            `${acc}${
-              withBos ? BOS : ""
-            }${B_INST} ${message.content.trim()} ${E_INST}` +
+            `${acc}${withBos ? BOS : ""}${B_INST} ${content.trim()} ${E_INST}` +
             (withNewlines ? "\n" : "")
           );
         } else {
           return (
-            `${acc} ${message.content.trim()}` +
+            `${acc} ${content.trim()}` +
             (withNewlines ? "\n" : " ") +
             (withBos ? EOS : "")
           ); // Yes, the EOS comes after the space. This is not a mistake.
@@ -524,10 +237,11 @@ If a question does not make any sense, or is not factually coherent, explain why
     params: LLMChatParamsStreaming,
   ): Promise<AsyncIterable<ChatResponseChunk>>;
   chat(params: LLMChatParamsNonStreaming): Promise<ChatResponse>;
+  @wrapLLMEvent
   async chat(
     params: LLMChatParamsNonStreaming | LLMChatParamsStreaming,
   ): Promise<ChatResponse | AsyncIterable<ChatResponseChunk>> {
-    const { messages, parentEvent, stream } = params;
+    const { messages, stream } = params;
     const api = ALL_AVAILABLE_LLAMADEUCE_MODELS[this.model]
       .replicateApi as `${string}/${string}:${string}`;
 
@@ -559,6 +273,7 @@ If a question does not make any sense, or is not factually coherent, explain why
       replicateOptions,
     );
     return {
+      raw: response,
       message: {
         content: (response as Array<string>).join("").trimStart(),
         //^ We need to do this because Replicate returns a list of strings (for streaming functionality which is not exposed by the run function)
@@ -568,146 +283,12 @@ If a question does not make any sense, or is not factually coherent, explain why
   }
 }
 
-export const ALL_AVAILABLE_ANTHROPIC_MODELS = {
-  // both models have 100k context window, see https://docs.anthropic.com/claude/reference/selecting-a-model
-  "claude-2": { contextWindow: 200000 },
-  "claude-instant-1": { contextWindow: 100000 },
-};
-
-/**
- * Anthropic LLM implementation
- */
-
-export class Anthropic extends BaseLLM {
-  // Per completion Anthropic params
-  model: keyof typeof ALL_AVAILABLE_ANTHROPIC_MODELS;
-  temperature: number;
-  topP: number;
-  maxTokens?: number;
-
-  // Anthropic session params
-  apiKey?: string = undefined;
-  maxRetries: number;
-  timeout?: number;
-  session: AnthropicSession;
-
-  callbackManager?: CallbackManager;
-
-  constructor(init?: Partial<Anthropic>) {
-    super();
-    this.model = init?.model ?? "claude-2";
-    this.temperature = init?.temperature ?? 0.1;
-    this.topP = init?.topP ?? 0.999; // Per Ben Mann
-    this.maxTokens = init?.maxTokens ?? undefined;
-
-    this.apiKey = init?.apiKey ?? undefined;
-    this.maxRetries = init?.maxRetries ?? 10;
-    this.timeout = init?.timeout ?? 60 * 1000; // Default is 60 seconds
-    this.session =
-      init?.session ??
-      getAnthropicSession({
-        apiKey: this.apiKey,
-        maxRetries: this.maxRetries,
-        timeout: this.timeout,
-      });
-
-    this.callbackManager = init?.callbackManager;
-  }
-
-  tokens(messages: ChatMessage[]): number {
-    throw new Error("Method not implemented.");
-  }
-
-  get metadata() {
-    return {
-      model: this.model,
-      temperature: this.temperature,
-      topP: this.topP,
-      maxTokens: this.maxTokens,
-      contextWindow: ALL_AVAILABLE_ANTHROPIC_MODELS[this.model].contextWindow,
-      tokenizer: undefined,
-    };
-  }
-
-  mapMessagesToPrompt(messages: ChatMessage[]) {
-    return (
-      messages.reduce((acc, message) => {
-        return (
-          acc +
-          `${
-            message.role === "system"
-              ? ""
-              : message.role === "assistant"
-                ? ANTHROPIC_AI_PROMPT + " "
-                : ANTHROPIC_HUMAN_PROMPT + " "
-          }${message.content.trim()}`
-        );
-      }, "") + ANTHROPIC_AI_PROMPT
-    );
-  }
-
-  chat(
-    params: LLMChatParamsStreaming,
-  ): Promise<AsyncIterable<ChatResponseChunk>>;
-  chat(params: LLMChatParamsNonStreaming): Promise<ChatResponse>;
-  async chat(
-    params: LLMChatParamsNonStreaming | LLMChatParamsStreaming,
-  ): Promise<ChatResponse | AsyncIterable<ChatResponseChunk>> {
-    const { messages, parentEvent, stream } = params;
-    //Streaming
-    if (stream) {
-      return this.streamChat(messages, parentEvent);
-    }
-
-    //Non-streaming
-    const response = await this.session.anthropic.completions.create({
-      model: this.model,
-      prompt: this.mapMessagesToPrompt(messages),
-      max_tokens_to_sample: this.maxTokens ?? 100000,
-      temperature: this.temperature,
-      top_p: this.topP,
-    });
-
-    return {
-      message: { content: response.completion.trimStart(), role: "assistant" },
-      //^ We're trimming the start because Anthropic often starts with a space in the response
-      // That space will be re-added when we generate the next prompt.
-    };
-  }
-
-  protected async *streamChat(
-    messages: ChatMessage[],
-    parentEvent?: Event | undefined,
-  ): AsyncIterable<ChatResponseChunk> {
-    // AsyncIterable<AnthropicStreamToken>
-    const stream: AsyncIterable<AnthropicStreamToken> =
-      await this.session.anthropic.completions.create({
-        model: this.model,
-        prompt: this.mapMessagesToPrompt(messages),
-        max_tokens_to_sample: this.maxTokens ?? 100000,
-        temperature: this.temperature,
-        top_p: this.topP,
-        stream: true,
-      });
-
-    var idx_counter: number = 0;
-    for await (const part of stream) {
-      //TODO: LLM Stream Callback, pending re-work.
-
-      idx_counter++;
-      yield { delta: part.completion };
-    }
-    return;
-  }
-}
-
 export class Portkey extends BaseLLM {
   apiKey?: string = undefined;
   baseURL?: string = undefined;
   mode?: string = undefined;
   llms?: [LLMOptions] | null = undefined;
   session: PortkeySession;
-  callbackManager?: CallbackManager;
 
   constructor(init?: Partial<Portkey>) {
     super();
@@ -721,11 +302,6 @@ export class Portkey extends BaseLLM {
       llms: this.llms,
       mode: this.mode,
     });
-    this.callbackManager = init?.callbackManager;
-  }
-
-  tokens(messages: ChatMessage[]): number {
-    throw new Error("Method not implemented.");
   }
 
   get metadata(): LLMMetadata {
@@ -736,50 +312,44 @@ export class Portkey extends BaseLLM {
     params: LLMChatParamsStreaming,
   ): Promise<AsyncIterable<ChatResponseChunk>>;
   chat(params: LLMChatParamsNonStreaming): Promise<ChatResponse>;
+  @wrapLLMEvent
   async chat(
     params: LLMChatParamsNonStreaming | LLMChatParamsStreaming,
   ): Promise<ChatResponse | AsyncIterable<ChatResponseChunk>> {
-    const { messages, parentEvent, stream, extraParams } = params;
+    const { messages, stream, additionalChatOptions } = params;
     if (stream) {
-      return this.streamChat(messages, parentEvent, extraParams);
+      return this.streamChat(messages, additionalChatOptions);
     } else {
-      const bodyParams = extraParams || {};
+      const bodyParams = additionalChatOptions || {};
       const response = await this.session.portkey.chatCompletions.create({
-        messages,
+        messages: messages.map((message) => ({
+          content: extractText(message.content),
+          role: message.role,
+        })),
         ...bodyParams,
       });
 
       const content = response.choices[0].message?.content ?? "";
       const role = response.choices[0].message?.role || "assistant";
-      return { message: { content, role: role as MessageType } };
+      return { raw: response, message: { content, role: role as MessageType } };
     }
   }
 
   async *streamChat(
     messages: ChatMessage[],
-    parentEvent?: Event,
     params?: Record<string, any>,
   ): AsyncIterable<ChatResponseChunk> {
-    // Wrapping the stream in a callback.
-    const onLLMStream = this.callbackManager?.onLLMStream
-      ? this.callbackManager.onLLMStream
-      : () => {};
-
     const chunkStream = await this.session.portkey.chatCompletions.create({
-      messages,
+      messages: messages.map((message) => ({
+        content: extractText(message.content),
+        role: message.role,
+      })),
       ...params,
       stream: true,
     });
 
-    const event: Event = parentEvent
-      ? parentEvent
-      : {
-          id: "unspecified",
-          type: "llmPredict" as EventType,
-        };
-
     //Indices
-    var idx_counter: number = 0;
+    let idx_counter: number = 0;
     for await (const part of chunkStream) {
       //Increment
       part.choices[0].index = idx_counter;
@@ -788,16 +358,15 @@ export class Portkey extends BaseLLM {
       //onLLMStream Callback
 
       const stream_callback: StreamCallbackResponse = {
-        event: event,
         index: idx_counter,
         isDone: is_done,
         // token: part,
       };
-      onLLMStream(stream_callback);
+      getCallbackManager().dispatchEvent("stream", stream_callback);
 
       idx_counter++;
 
-      yield { delta: part.choices[0].delta?.content ?? "" };
+      yield { raw: part, delta: part.choices[0].delta?.content ?? "" };
     }
     return;
   }

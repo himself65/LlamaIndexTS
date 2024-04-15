@@ -1,6 +1,6 @@
-import { BaseNode } from "../../Node";
-import { BaseDocumentStore } from "../../storage";
-import { TransformComponent } from "../types";
+import type { BaseNode } from "../../Node.js";
+import type { BaseDocumentStore } from "../../storage/docStore/types.js";
+import type { TransformComponent } from "../types.js";
 
 /**
  * Handle doc store duplicates by checking all hashes.
@@ -25,7 +25,7 @@ export class DuplicatesStrategy implements TransformComponent {
       }
     }
 
-    this.docStore.addDocuments(nodesToRun, true);
+    await this.docStore.addDocuments(nodesToRun, true);
 
     return nodesToRun;
   }

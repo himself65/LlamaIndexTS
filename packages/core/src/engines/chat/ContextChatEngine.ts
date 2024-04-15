@@ -1,27 +1,33 @@
-import { ChatHistory, getHistory } from "../../ChatHistory";
-import { ContextSystemPrompt } from "../../Prompt";
-import { Response } from "../../Response";
-import { BaseRetriever } from "../../Retriever";
-import { Event } from "../../callbacks/CallbackManager";
-import { randomUUID } from "../../env";
-import { ChatMessage, ChatResponseChunk, LLM, OpenAI } from "../../llm";
-import { MessageContent } from "../../llm/types";
-import { extractText, streamConverter, streamReducer } from "../../llm/utils";
-import { BaseNodePostprocessor } from "../../postprocessors";
-import { DefaultContextGenerator } from "./DefaultContextGenerator";
+import type { ChatHistory } from "../../ChatHistory.js";
+import { getHistory } from "../../ChatHistory.js";
+import type { ContextSystemPrompt } from "../../Prompt.js";
+import { Response } from "../../Response.js";
+import type { BaseRetriever } from "../../Retriever.js";
+import { wrapEventCaller } from "../../internal/context/EventCaller.js";
+import type { ChatMessage, ChatResponseChunk, LLM } from "../../llm/index.js";
+import { OpenAI } from "../../llm/index.js";
+import type { MessageContent } from "../../llm/types.js";
 import {
+  extractText,
+  streamConverter,
+  streamReducer,
+} from "../../llm/utils.js";
+import type { BaseNodePostprocessor } from "../../postprocessors/index.js";
+import { PromptMixin } from "../../prompts/Mixin.js";
+import { DefaultContextGenerator } from "./DefaultContextGenerator.js";
+import type {
   ChatEngine,
   ChatEngineParamsNonStreaming,
   ChatEngineParamsStreaming,
   ContextGenerator,
-} from "./types";
+} from "./types.js";
 
 /**
  * ContextChatEngine uses the Index to get the appropriate context for each query.
  * The context is stored in the system prompt, and the chat history is preserved,
  * ideally allowing the appropriate context to be surfaced for each query.
  */
-export class ContextChatEngine implements ChatEngine {
+export class ContextChatEngine extends PromptMixin implements ChatEngine {
   chatModel: LLM;
   chatHistory: ChatHistory;
   contextGenerator: ContextGenerator;
@@ -33,6 +39,8 @@ export class ContextChatEngine implements ChatEngine {
     contextSystemPrompt?: ContextSystemPrompt;
     nodePostprocessors?: BaseNodePostprocessor[];
   }) {
+    super();
+
     this.chatModel =
       init.chatModel ?? new OpenAI({ model: "gpt-3.5-turbo-16k" });
     this.chatHistory = getHistory(init?.chatHistory);
@@ -43,8 +51,15 @@ export class ContextChatEngine implements ChatEngine {
     });
   }
 
+  protected _getPromptModules(): Record<string, ContextGenerator> {
+    return {
+      contextGenerator: this.contextGenerator,
+    };
+  }
+
   chat(params: ChatEngineParamsStreaming): Promise<AsyncIterable<Response>>;
   chat(params: ChatEngineParamsNonStreaming): Promise<Response>;
+  @wrapEventCaller
   async chat(
     params: ChatEngineParamsStreaming | ChatEngineParamsNonStreaming,
   ): Promise<Response | AsyncIterable<Response>> {
@@ -52,21 +67,14 @@ export class ContextChatEngine implements ChatEngine {
     const chatHistory = params.chatHistory
       ? getHistory(params.chatHistory)
       : this.chatHistory;
-    const parentEvent: Event = {
-      id: randomUUID(),
-      type: "wrapper",
-      tags: ["final"],
-    };
     const requestMessages = await this.prepareRequestMessages(
       message,
       chatHistory,
-      parentEvent,
     );
 
     if (stream) {
       const stream = await this.chatModel.chat({
         messages: requestMessages.messages,
-        parentEvent,
         stream: true,
       });
       return streamConverter(
@@ -83,10 +91,12 @@ export class ContextChatEngine implements ChatEngine {
     }
     const response = await this.chatModel.chat({
       messages: requestMessages.messages,
-      parentEvent,
     });
     chatHistory.addMessage(response.message);
-    return new Response(response.message.content, requestMessages.nodes);
+    return new Response(
+      extractText(response.message.content),
+      requestMessages.nodes,
+    );
   }
 
   reset() {
@@ -96,18 +106,16 @@ export class ContextChatEngine implements ChatEngine {
   private async prepareRequestMessages(
     message: MessageContent,
     chatHistory: ChatHistory,
-    parentEvent?: Event,
   ) {
     chatHistory.addMessage({
       content: message,
       role: "user",
     });
     const textOnly = extractText(message);
-    const context = await this.contextGenerator.generate(textOnly, parentEvent);
-    const nodes = context.nodes.map((r) => r.node);
+    const context = await this.contextGenerator.generate(textOnly);
     const messages = await chatHistory.requestMessages(
       context ? [context.message] : undefined,
     );
-    return { nodes, messages };
+    return { nodes: context.nodes, messages };
   }
 }

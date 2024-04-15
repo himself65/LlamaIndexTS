@@ -1,13 +1,14 @@
-import {
-  AssemblyAI,
+import { getEnv } from "@llamaindex/env";
+import type {
   BaseServiceParams,
   SubtitleFormat,
   TranscribeParams,
   TranscriptParagraph,
   TranscriptSentence,
 } from "assemblyai";
-import { Document } from "../Node";
-import { BaseReader } from "./base";
+import { AssemblyAI } from "assemblyai";
+import { Document } from "../Node.js";
+import type { BaseReader } from "./type.js";
 
 type AssemblyAIOptions = Partial<BaseServiceParams>;
 
@@ -28,7 +29,7 @@ abstract class AssemblyAIReader implements BaseReader {
       options = {};
     }
     if (!options.apiKey) {
-      options.apiKey = process.env.ASSEMBLYAI_API_KEY;
+      options.apiKey = getEnv("ASSEMBLYAI_API_KEY");
     }
     if (!options.apiKey) {
       throw new Error(
@@ -39,7 +40,7 @@ abstract class AssemblyAIReader implements BaseReader {
     this.client = new AssemblyAI(options as BaseServiceParams);
   }
 
-  abstract loadData(...args: any[]): Promise<Document[]>;
+  abstract loadData(params: TranscribeParams | string): Promise<Document[]>;
 
   protected async transcribeOrGetTranscript(params: TranscribeParams | string) {
     if (typeof params === "string") {
@@ -83,7 +84,7 @@ class AudioTranscriptParagraphsReader extends AssemblyAIReader {
    * @returns A promise that resolves to an array of documents, each containing a paragraph of the transcript.
    */
   async loadData(params: TranscribeParams | string): Promise<Document[]> {
-    let transcriptId = await this.getTranscriptId(params);
+    const transcriptId = await this.getTranscriptId(params);
     const paragraphsResponse =
       await this.client.transcripts.paragraphs(transcriptId);
     return paragraphsResponse.paragraphs.map(
@@ -102,7 +103,7 @@ class AudioTranscriptSentencesReader extends AssemblyAIReader {
    * @returns A promise that resolves to an array of documents, each containing a sentence of the transcript.
    */
   async loadData(params: TranscribeParams | string): Promise<Document[]> {
-    let transcriptId = await this.getTranscriptId(params);
+    const transcriptId = await this.getTranscriptId(params);
     const sentencesResponse =
       await this.client.transcripts.sentences(transcriptId);
     return sentencesResponse.sentences.map(
@@ -125,7 +126,7 @@ class AudioSubtitlesReader extends AssemblyAIReader {
     params: TranscribeParams | string,
     subtitleFormat: SubtitleFormat = "srt",
   ): Promise<Document[]> {
-    let transcriptId = await this.getTranscriptId(params);
+    const transcriptId = await this.getTranscriptId(params);
     const subtitles = await this.client.transcripts.subtitles(
       transcriptId,
       subtitleFormat,

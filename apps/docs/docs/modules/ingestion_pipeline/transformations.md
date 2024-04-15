@@ -1,10 +1,10 @@
 # Transformations
 
-A transformation is something that takes a list of nodes as an input, and returns a list of nodes. Each component that implements the Transformatio class has both a `transform` definition responsible for transforming the nodes
+A transformation is something that takes a list of nodes as an input, and returns a list of nodes. Each component that implements the Transformation class has both a `transform` definition responsible for transforming the nodes.
 
 Currently, the following components are Transformation objects:
 
-- [SimpleNodeParser](../../api/classes/SimpleNodeParser.md)
+- [SimpleNodeParser](../api/classes/SimpleNodeParser.md)
 - [MetadataExtractor](../documents_and_nodes/metadata_extraction.md)
 - Embeddings
 

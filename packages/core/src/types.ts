@@ -1,16 +1,14 @@
 /**
  * Top level types to avoid circular dependencies
  */
-
-import { Event } from "./callbacks/CallbackManager";
-import { Response } from "./Response";
+import { type JSONSchemaType } from "ajv";
+import type { Response } from "./Response.js";
 
 /**
  * Parameters for sending a query.
  */
 export interface QueryEngineParamsBase {
   query: string;
-  parentEvent?: Event;
 }
 
 export interface QueryEngineParamsStreaming extends QueryEngineParamsBase {
@@ -33,24 +31,45 @@ export interface BaseQueryEngine {
   query(params: QueryEngineParamsNonStreaming): Promise<Response>;
 }
 
+type Known =
+  | { [key: string]: Known }
+  | [Known, ...Known[]]
+  | Known[]
+  | number
+  | string
+  | boolean
+  | null;
+
+export type ToolMetadata<
+  Parameters extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  description: string;
+  name: string;
+  /**
+   * OpenAI uses JSON Schema to describe the parameters that a tool can take.
+   * @link https://json-schema.org/understanding-json-schema
+   */
+  parameters?: Parameters;
+};
+
 /**
  * Simple Tool interface. Likely to change.
  */
-export interface BaseTool {
-  metadata: ToolMetadata;
+export interface BaseTool<Input = any> {
+  /**
+   * This could be undefined if the implementation is not provided,
+   *  which might be the case when communicating with a llm.
+   *
+   * @return string - the output of the tool, should be string in any case for LLM input.
+   */
+  call?: (input: Input) => string | Promise<string>;
+  metadata: // if user input any, we cannot check the schema
+  Input extends Known ? ToolMetadata<JSONSchemaType<Input>> : ToolMetadata;
 }
 
-/**
- * A Tool that uses a QueryEngine.
- */
-export interface QueryEngineTool extends BaseTool {
-  queryEngine: BaseQueryEngine;
-}
-
-export interface SubQuestion {
-  subQuestion: string;
-  toolName: string;
-}
+export type ToolWithCall<Input = unknown> = Omit<BaseTool<Input>, "call"> & {
+  call: NonNullable<Pick<BaseTool<Input>, "call">["call"]>;
+};
 
 /**
  * An OutputParser is used to extract structured data from the raw output of the LLM.
@@ -69,14 +88,18 @@ export interface StructuredOutput<T> {
   parsedOutput: T;
 }
 
-export interface ToolMetadata {
-  description: string;
-  name: string;
+export type ToolMetadataOnlyDescription = Pick<ToolMetadata, "description">;
+
+export class QueryBundle {
+  queryStr: string;
+
+  constructor(queryStr: string) {
+    this.queryStr = queryStr;
+  }
+
+  toString(): string {
+    return this.queryStr;
+  }
 }
 
-/**
- * QuestionGenerators generate new questions for the LLM using tools and a user query.
- */
-export interface BaseQuestionGenerator {
-  generate(tools: ToolMetadata[], query: string): Promise<SubQuestion[]>;
-}
+export type UUID = `${string}-${string}-${string}-${string}-${string}`;

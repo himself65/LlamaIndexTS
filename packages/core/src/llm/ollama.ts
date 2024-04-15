@@ -1,8 +1,6 @@
-import { CallbackManager, Event } from "../callbacks/CallbackManager";
-import { BaseEmbedding } from "../embeddings";
-import { ok } from "../env";
-import {
-  ChatMessage,
+import { ok } from "@llamaindex/env";
+import { BaseEmbedding } from "../embeddings/types.js";
+import type {
   ChatResponse,
   ChatResponseChunk,
   CompletionResponse,
@@ -12,15 +10,17 @@ import {
   LLMCompletionParamsNonStreaming,
   LLMCompletionParamsStreaming,
   LLMMetadata,
-} from "./types";
+} from "./types.js";
 
 const messageAccessor = (data: any): ChatResponseChunk => {
   return {
+    raw: data,
     delta: data.message.content,
   };
 };
+
 const completionAccessor = (data: any): CompletionResponse => {
-  return { text: data.response };
+  return { text: data.response, raw: null };
 };
 
 // https://github.com/jmorganca/ollama
@@ -35,16 +35,19 @@ export class Ollama extends BaseEmbedding implements LLM {
   contextWindow: number = 4096;
   requestTimeout: number = 60 * 1000; // Default is 60 seconds
   additionalChatOptions?: Record<string, unknown>;
-  callbackManager?: CallbackManager;
+
+  protected modelMetadata: Partial<LLMMetadata>;
 
   constructor(
     init: Partial<Ollama> & {
       // model is required
       model: string;
+      modelMetadata?: Partial<LLMMetadata>;
     },
   ) {
     super();
     this.model = init.model;
+    this.modelMetadata = init.modelMetadata ?? {};
     Object.assign(this, init);
   }
 
@@ -56,6 +59,7 @@ export class Ollama extends BaseEmbedding implements LLM {
       maxTokens: undefined,
       contextWindow: this.contextWindow,
       tokenizer: undefined,
+      ...this.modelMetadata,
     };
   }
 
@@ -66,7 +70,7 @@ export class Ollama extends BaseEmbedding implements LLM {
   async chat(
     params: LLMChatParamsNonStreaming | LLMChatParamsStreaming,
   ): Promise<ChatResponse | AsyncIterable<ChatResponseChunk>> {
-    const { messages, parentEvent, stream } = params;
+    const { messages, stream } = params;
     const payload = {
       model: this.model,
       messages: messages.map((message) => ({
@@ -103,14 +107,13 @@ export class Ollama extends BaseEmbedding implements LLM {
       const stream = response.body;
       ok(stream, "stream is null");
       ok(stream instanceof ReadableStream, "stream is not readable");
-      return this.streamChat(stream, messageAccessor, parentEvent);
+      return this.streamChat(stream, messageAccessor);
     }
   }
 
   private async *streamChat<T>(
     stream: ReadableStream<Uint8Array>,
     accessor: (data: any) => T,
-    parentEvent?: Event,
   ): AsyncIterable<T> {
     const reader = stream.getReader();
     while (true) {
@@ -144,7 +147,7 @@ export class Ollama extends BaseEmbedding implements LLM {
   async complete(
     params: LLMCompletionParamsStreaming | LLMCompletionParamsNonStreaming,
   ): Promise<CompletionResponse | AsyncIterable<CompletionResponse>> {
-    const { prompt, parentEvent, stream } = params;
+    const { prompt, stream } = params;
     const payload = {
       model: this.model,
       prompt: prompt,
@@ -174,12 +177,8 @@ export class Ollama extends BaseEmbedding implements LLM {
       const stream = response.body;
       ok(stream, "stream is null");
       ok(stream instanceof ReadableStream, "stream is not readable");
-      return this.streamChat(stream, completionAccessor, parentEvent);
+      return this.streamChat(stream, completionAccessor);
     }
-  }
-
-  tokens(messages: ChatMessage[]): number {
-    throw new Error("Method not implemented.");
   }
 
   private async getEmbedding(prompt: string): Promise<number[]> {

@@ -1,12 +1,15 @@
-import { NodeWithScore, TextNode } from "../../Node";
-import { ContextSystemPrompt, defaultContextSystemPrompt } from "../../Prompt";
-import { BaseRetriever } from "../../Retriever";
-import { Event } from "../../callbacks/CallbackManager";
-import { randomUUID } from "../../env";
-import { BaseNodePostprocessor } from "../../postprocessors";
-import { Context, ContextGenerator } from "./types";
+import type { NodeWithScore, TextNode } from "../../Node.js";
+import type { ContextSystemPrompt } from "../../Prompt.js";
+import { defaultContextSystemPrompt } from "../../Prompt.js";
+import type { BaseRetriever } from "../../Retriever.js";
+import type { BaseNodePostprocessor } from "../../postprocessors/index.js";
+import { PromptMixin } from "../../prompts/index.js";
+import type { Context, ContextGenerator } from "./types.js";
 
-export class DefaultContextGenerator implements ContextGenerator {
+export class DefaultContextGenerator
+  extends PromptMixin
+  implements ContextGenerator
+{
   retriever: BaseRetriever;
   contextSystemPrompt: ContextSystemPrompt;
   nodePostprocessors: BaseNodePostprocessor[];
@@ -16,33 +19,50 @@ export class DefaultContextGenerator implements ContextGenerator {
     contextSystemPrompt?: ContextSystemPrompt;
     nodePostprocessors?: BaseNodePostprocessor[];
   }) {
+    super();
+
     this.retriever = init.retriever;
     this.contextSystemPrompt =
       init?.contextSystemPrompt ?? defaultContextSystemPrompt;
     this.nodePostprocessors = init.nodePostprocessors || [];
   }
 
-  private applyNodePostprocessors(nodes: NodeWithScore[]) {
-    return this.nodePostprocessors.reduce(
-      (nodes, nodePostprocessor) => nodePostprocessor.postprocessNodes(nodes),
-      nodes,
-    );
+  protected _getPrompts(): { contextSystemPrompt: ContextSystemPrompt } {
+    return {
+      contextSystemPrompt: this.contextSystemPrompt,
+    };
   }
 
-  async generate(message: string, parentEvent?: Event): Promise<Context> {
-    if (!parentEvent) {
-      parentEvent = {
-        id: randomUUID(),
-        type: "wrapper",
-        tags: ["final"],
-      };
+  protected _updatePrompts(promptsDict: {
+    contextSystemPrompt: ContextSystemPrompt;
+  }): void {
+    if (promptsDict.contextSystemPrompt) {
+      this.contextSystemPrompt = promptsDict.contextSystemPrompt;
     }
-    const sourceNodesWithScore = await this.retriever.retrieve(
-      message,
-      parentEvent,
-    );
+  }
 
-    const nodes = this.applyNodePostprocessors(sourceNodesWithScore);
+  private async applyNodePostprocessors(nodes: NodeWithScore[], query: string) {
+    let nodesWithScore = nodes;
+
+    for (const postprocessor of this.nodePostprocessors) {
+      nodesWithScore = await postprocessor.postprocessNodes(
+        nodesWithScore,
+        query,
+      );
+    }
+
+    return nodesWithScore;
+  }
+
+  async generate(message: string): Promise<Context> {
+    const sourceNodesWithScore = await this.retriever.retrieve({
+      query: message,
+    });
+
+    const nodes = await this.applyNodePostprocessors(
+      sourceNodesWithScore,
+      message,
+    );
 
     return {
       message: {

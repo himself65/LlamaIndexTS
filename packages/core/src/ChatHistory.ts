@@ -1,10 +1,9 @@
-import { OpenAI } from "./llm/LLM";
-import { ChatMessage, LLM, MessageType } from "./llm/types";
-import {
-  defaultSummaryPrompt,
-  messagesToHistoryStr,
-  SummaryPrompt,
-} from "./Prompt";
+import { globalsHelper } from "./GlobalsHelper.js";
+import type { SummaryPrompt } from "./Prompt.js";
+import { defaultSummaryPrompt, messagesToHistoryStr } from "./Prompt.js";
+import { OpenAI } from "./llm/open_ai.js";
+import type { ChatMessage, LLM, MessageType } from "./llm/types.js";
+import { extractText } from "./llm/utils.js";
 
 /**
  * A ChatHistory is used to keep the state of back and forth chat messages
@@ -65,6 +64,12 @@ export class SimpleChatHistory extends ChatHistory {
 }
 
 export class SummaryChatHistory extends ChatHistory {
+  /**
+   * Tokenizer function that converts text to tokens,
+   *  this is used to calculate the number of tokens in a message.
+   */
+  tokenizer: (text: string) => Uint32Array =
+    globalsHelper.defaultTokenizer.encode;
   tokensToSummarize: number;
   messages: ChatMessage[];
   summaryPrompt: SummaryPrompt;
@@ -107,7 +112,9 @@ export class SummaryChatHistory extends ChatHistory {
       ];
       // remove oldest message until the chat history is short enough for the context window
       messagesToSummarize.shift();
-    } while (this.llm.tokens(promptMessages) > this.tokensToSummarize);
+    } while (
+      this.tokenizer(promptMessages[0].content).length > this.tokensToSummarize
+    );
 
     const response = await this.llm.chat({ messages: promptMessages });
     return { content: response.message.content, role: "memory" };
@@ -181,7 +188,11 @@ export class SummaryChatHistory extends ChatHistory {
     const requestMessages = this.calcCurrentRequestMessages(transientMessages);
 
     // get tokens of current request messages and the transient messages
-    const tokens = this.llm.tokens(requestMessages);
+    const tokens = requestMessages.reduce(
+      (count, message) =>
+        count + this.tokenizer(extractText(message.content)).length,
+      0,
+    );
     if (tokens > this.tokensToSummarize) {
       // if there are too many tokens for the next request, call summarize
       const memoryMessage = await this.summarize();

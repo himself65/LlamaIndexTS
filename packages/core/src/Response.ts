@@ -1,18 +1,19 @@
-import { BaseNode } from "./Node";
+import type { NodeWithScore } from "./Node.js";
 
 /**
  * Response is the output of a LLM
  */
 export class Response {
   response: string;
-  sourceNodes?: BaseNode[];
+  sourceNodes?: NodeWithScore[];
+  metadata: Record<string, unknown> = {};
 
-  constructor(response: string, sourceNodes?: BaseNode[]) {
+  constructor(response: string, sourceNodes?: NodeWithScore[]) {
     this.response = response;
     this.sourceNodes = sourceNodes || [];
   }
 
-  getFormattedSources() {
+  protected _getFormattedSources() {
     throw new Error("Not implemented yet");
   }
 

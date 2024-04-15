@@ -1,7 +1,7 @@
-import { Document } from "../Node";
-import { createSHA256, defaultFS } from "../env";
-import { GenericFileSystem } from "../storage/FileSystem";
-import { BaseReader } from "./base";
+import type { GenericFileSystem } from "@llamaindex/env";
+import { createSHA256, defaultFS } from "@llamaindex/env";
+import { Document } from "../Node.js";
+import type { BaseReader } from "./type.js";
 
 /**
  * Read the text of a PDF
@@ -11,12 +11,7 @@ export class PDFReader implements BaseReader {
     file: string,
     fs: GenericFileSystem = defaultFS,
   ): Promise<Document[]> {
-    // todo: fix fs type
-    const content = (await fs.readFile(file)) as unknown;
-    if (!(content instanceof Buffer)) {
-      console.warn(`PDF File ${file} can only be loaded using the Node FS`);
-      return [];
-    }
+    const content = await fs.readRawFile(file);
     const text = await readPDF(content);
     return text.map((text) => {
       const sha256 = createSHA256();
