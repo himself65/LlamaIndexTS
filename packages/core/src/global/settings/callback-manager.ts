@@ -80,6 +80,17 @@ export class CallbackManager {
     return this;
   }
 
+  once<K extends keyof LlamaIndexEventMaps>(
+    event: K,
+    handler: EventHandler<LlamaIndexEventMaps[K]>,
+  ) {
+    const wrappedHandler: EventHandler<LlamaIndexEventMaps[K]> = (ev) => {
+      handler(ev);
+      this.off(event, wrappedHandler);
+    };
+    return this.on(event, wrappedHandler);
+  }
+
   off<K extends keyof LlamaIndexEventMaps>(
     event: K,
     handler: EventHandler<LlamaIndexEventMaps[K]>,
