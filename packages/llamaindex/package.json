@@ -36,7 +36,6 @@
     "@mistralai/mistralai": "^1.0.4",
     "@mixedbread-ai/sdk": "^2.2.11",
     "@pinecone-database/pinecone": "^3.0.2",
-    "@qdrant/js-client-rest": "^1.11.0",
     "@types/lodash": "^4.17.7",
     "@types/node": "^22.5.1",
     "@types/papaparse": "^5.3.14",
@@ -72,15 +71,20 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "@notionhq/client": "^2.2.15"
+    "@notionhq/client": "^2.2.15",
+    "@qdrant/qdrant-js": "^1.11.0"
   },
   "peerDependenciesMeta": {
+    "@qdrant/qdrant-js": {
+      "optional": true
+    },
     "@notionhq/client": {
       "optional": true
     }
   },
   "devDependencies": {
     "@notionhq/client": "^2.2.15",
+    "@qdrant/qdrant-js": "^1.11.0",
     "@swc/cli": "^0.4.0",
     "@swc/core": "^1.7.22",
     "concurrently": "^8.2.2",

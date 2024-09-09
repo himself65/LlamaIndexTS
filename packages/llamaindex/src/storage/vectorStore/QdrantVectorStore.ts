@@ -1,14 +1,14 @@
 import type { BaseNode } from "@llamaindex/core/schema";
 import {
   VectorStoreBase,
-  type IEmbedModel,
   type VectorStoreNoEmbedModel,
   type VectorStoreQuery,
-  type VectorStoreQueryResult,
-} from "./types.js";
+  type VectorStoreQueryResult
+} from './types.js';
 
-import { QdrantClient } from "@qdrant/js-client-rest";
+import { QdrantClient, type QdrantClientParams, type Schemas } from "@qdrant/qdrant-js";
 import { metadataDictToNode, nodeToMetadata } from "./utils.js";
+import type { BaseEmbedding } from '@llamaindex/core/embeddings';
 
 type PointStruct = {
   id: string;
@@ -16,13 +16,11 @@ type PointStruct = {
   vector: number[];
 };
 
-type QdrantParams = {
-  collectionName?: string;
-  client?: QdrantClient;
-  url?: string;
-  apiKey?: string;
+type QdrantVectorStoreOptions = (QdrantClientParams | { client?: QdrantClient; }) & {
   batchSize?: number;
-} & Partial<IEmbedModel>;
+  collectionName?: string;
+  embedModel?: BaseEmbedding;
+};
 
 type QuerySearchResult = {
   id: string;
@@ -32,9 +30,6 @@ type QuerySearchResult = {
   version: number;
 };
 
-/**
- * Qdrant vector store.
- */
 export class QdrantVectorStore
   extends VectorStoreBase
   implements VectorStoreNoEmbedModel
@@ -56,38 +51,19 @@ export class QdrantVectorStore
    * @param batchSize Number of vectors to upload in a single batch
    * @param embedModel Embedding model
    */
-  constructor({
-    collectionName,
-    client,
-    url,
-    apiKey,
-    batchSize,
-    embedModel,
-  }: QdrantParams) {
+  constructor(options: QdrantVectorStoreOptions) {
+    const { embedModel, batchSize, collectionName } = options;
     super(embedModel);
-    if (!client && !url) {
-      if (!url) {
-        throw new Error("QdrantVectorStore requires url and collectionName");
-      }
-    }
-
-    if (client) {
-      this.db = client;
+    if ('client' in options && options.client) {
+      this.db = options.client;
     } else {
-      this.db = new QdrantClient({
-        url: url,
-        apiKey: apiKey,
-      });
+      this.db = new QdrantClient(options as QdrantClientParams);
     }
 
     this.collectionName = collectionName ?? "default";
     this.batchSize = batchSize ?? 100;
   }
 
-  /**
-   * Returns the Qdrant client.
-   * @returns Qdrant client
-   */
   client() {
     return this.db;
   }
@@ -267,9 +243,11 @@ export class QdrantVectorStore
    */
   async query(
     query: VectorStoreQuery,
-    options?: any,
+    options?: {
+      qdrantFilters?: Schemas['Filter'];
+    },
   ): Promise<VectorStoreQueryResult> {
-    const qdrantFilters = options?.qdrant_filters;
+    const qdrantFilters = options?.qdrantFilters;
 
     let queryFilters;
 
@@ -292,11 +270,7 @@ export class QdrantVectorStore
     return this.parseToQueryResult(result);
   }
 
-  /**
-   * Qdrant filter builder
-   * @param query The VectorStoreQuery to be used
-   */
-  private async buildQueryFilter(query: VectorStoreQuery) {
+  private buildQueryFilter(query: VectorStoreQuery): Schemas['Filter'] | null {
     if (!query.docIds && !query.queryStr && !query.filters) {
       return null;
     }
@@ -323,22 +297,12 @@ export class QdrantVectorStore
     for (let i = 0; i < metadataFilters.length; i++) {
       const filter = metadataFilters[i];
 
-      if (typeof filter.key === "number") {
-        mustConditions.push({
-          key: filter.key,
-          match: {
-            gt: filter.value,
-            lt: filter.value,
-          },
-        });
-      } else {
-        mustConditions.push({
-          key: filter.key,
-          match: {
-            value: filter.value,
-          },
-        });
-      }
+      mustConditions.push({
+        key: filter.key,
+        match: {
+          value: filter.value,
+        },
+      });
     }
 
     return {
