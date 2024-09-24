@@ -1,0 +1,23 @@
+{
+  "name": "@llamaindex/docs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/himself65/LlamaIndexTS.git"
+  },
+  "private": true,
+  "dependencies": {
+    "next": "^14.2.13",
+    "nextra": "^4.0.0-app-router.2",
+    "nextra-theme-docs": "^4.0.0-app-router.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
