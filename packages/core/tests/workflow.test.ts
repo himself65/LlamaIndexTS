@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test, vi, type Mocked } from "vitest";
-import type { Context } from "../src/workflow/context.js";
+import { Context } from "../src/workflow/context.js";
 import {
   StartEvent,
   StopEvent,
   WorkflowEvent,
 } from "../src/workflow/events.js";
-import { Workflow } from "../src/workflow/workflow.js";
+import { WorkflowTemplate } from "../src/workflow/workflow.js";
 
 // mock OpenAI class for testing
 class OpenAI {
@@ -55,7 +55,7 @@ describe("Workflow", () => {
   });
 
   test("addStep", () => {
-    const jokeFlow = new Workflow({ verbose: true });
+    const jokeFlow = new WorkflowTemplate({ verbose: true });
 
     jokeFlow.addStep(StartEvent, generateJoke);
     jokeFlow.addStep(JokeEvent, critiqueJoke);
@@ -65,7 +65,7 @@ describe("Workflow", () => {
   });
 
   test("run workflow", async () => {
-    const jokeFlow = new Workflow({ verbose: true });
+    const jokeFlow = new WorkflowTemplate({ verbose: true });
 
     jokeFlow.addStep(StartEvent, generateJoke);
     jokeFlow.addStep(JokeEvent, critiqueJoke);
@@ -80,7 +80,7 @@ describe("Workflow", () => {
   });
 
   test("stream events", async () => {
-    const jokeFlow = new Workflow({ verbose: true });
+    const jokeFlow = new WorkflowTemplate({ verbose: true });
 
     jokeFlow.addStep(StartEvent, generateJoke);
     jokeFlow.addStep(JokeEvent, critiqueJoke);
@@ -99,7 +99,7 @@ describe("Workflow", () => {
 
   test("workflow timeout", async () => {
     const TIMEOUT = 1;
-    const jokeFlow = new Workflow({ verbose: true, timeout: TIMEOUT });
+    const jokeFlow = new WorkflowTemplate({ verbose: true, timeout: TIMEOUT });
 
     const longRunning = async (_context: Context, ev: StartEvent) => {
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for 2 seconds
@@ -126,7 +126,7 @@ describe("Workflow", () => {
 
   test("collectEvents", async () => {
     let collectedEvents: WorkflowEvent[] | null = null;
-    const jokeFlow = new Workflow({ verbose: true });
+    const jokeFlow = new WorkflowTemplate({ verbose: true });
 
     jokeFlow.addStep(StartEvent, generateJoke);
     jokeFlow.addStep(JokeEvent, analyzeJoke);
@@ -143,7 +143,7 @@ describe("Workflow", () => {
   });
 
   test("run workflow with object-based StartEvent and StopEvent", async () => {
-    const objectFlow = new Workflow<Person>({ verbose: true });
+    const objectFlow = new WorkflowTemplate<Person>({ verbose: true });
 
     type Person = { name: string; age: number };
 
@@ -167,4 +167,65 @@ describe("Workflow", () => {
       greeting: "Hello Alice, you are 30 years old!",
     });
   });
+
+  test('run workflow with custom context', async () => {
+    class MyContext extends Context {
+      map = new Map<string, string>();
+      get(key: string) {
+        return this.map.get(key);
+      }
+      set(key: string, value: string) {
+        this.map.set(key, value);
+      }
+    }
+
+    const Workflow = WorkflowTemplate.generate(MyContext)
+
+    const myFlow = new Workflow({ verbose: true });
+    myFlow.addStep(StartEvent, (context) => {
+      context.set('name', 'Alice');
+      return new StopEvent({
+        result: 'Hello world'
+      })
+    });
+
+    const result = await myFlow.run('Hello world');
+    expect(result.data.result).toBe('Hello world');
+  })
+
+  test('run workflow with custom context and custom start/stop events', async () => {
+    class MyContext extends Context {
+      map = new Map<string, string>();
+      get(key: string) {
+        return this.map.get(key);
+      }
+      set(key: string, value: string) {
+        this.map.set(key, value);
+      }
+    }
+
+    type Start = {
+      prompt: string
+    }
+
+    type Stop = {
+      result: number
+    }
+
+    type A = typeof MyContext
+    const Workflow = WorkflowTemplate.generate<Start, Stop, typeof MyContext>(MyContext)
+
+    const myFlow = new Workflow({ verbose: true });
+    myFlow.addStep(StartEvent, (context) => {
+      context.set('name', 'Alice');
+      return new StopEvent({
+        result: 'Hello world'
+      })
+    });
+
+    const result = await myFlow.run({
+	    prompt: '123'
+    });
+    expect(result.data.result).toBe('Hello world');
+  })
 });

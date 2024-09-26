@@ -1,6 +1,5 @@
 import { assertExists } from "../utils";
 import {
-  type EventTypes,
   StartEvent,
   StopEvent,
   WorkflowEvent,
@@ -8,17 +7,21 @@ import {
 
 export type StepFunction<
   Start = string,
+  Stop = string,
+  Ctx extends new (params: ContextParams<Start>) => any = typeof Context<Start>,
   T extends WorkflowEvent = WorkflowEvent,
-> = (context: Context<Start>, ev: T) => Promise<WorkflowEvent>;
+> = (context: InstanceType<Ctx>, ev: T) => Promise<
+  WorkflowEvent | StartEvent<Start> | StopEvent<Stop>
+> | WorkflowEvent | StartEvent<Start> | StopEvent<Stop>;
 
 export type StepMap = Map<
   StepFunction<any>,
-  { inputs: EventTypes[]; outputs: EventTypes[] | undefined }
+  { inputs: typeof WorkflowEvent[]; outputs: typeof WorkflowEvent[] | undefined }
 >;
 
 export type ReadonlyStepMap = ReadonlyMap<
   StepFunction<any>,
-  { inputs: EventTypes[]; outputs: EventTypes[] | undefined }
+  { inputs: typeof WorkflowEvent[]; outputs: typeof WorkflowEvent[] | undefined }
 >;
 
 export type ContextParams<Start> = {
@@ -28,24 +31,27 @@ export type ContextParams<Start> = {
   verbose: boolean;
 };
 
-export class Context<Start = string>
+export class Context<
+  Start = string,
+  Stop = string
+>
   implements AsyncIterable<WorkflowEvent, void, void>, Promise<StopEvent>
 {
   readonly #steps: ReadonlyStepMap;
   // reverse map of #steps, helper for get the next step
-  readonly #eventMap: WeakMap<typeof WorkflowEvent, StepFunction<Start>>;
+  readonly #eventMap: WeakMap<typeof WorkflowEvent, StepFunction<Start, Stop, typeof Context>>;
 
   readonly #startEvent: StartEvent<Start>;
   readonly #queue: WorkflowEvent[] = [];
 
-  #eventBuffer: Map<EventTypes, WorkflowEvent[]> = new Map();
+  #eventBuffer: Map<typeof WorkflowEvent, WorkflowEvent[]> = new Map();
 
   #running: boolean = true;
   #timeout: number | null = null;
   #verbose: boolean = false;
 
   #getStepFunction(event: WorkflowEvent): StepFunction<Start> | undefined {
-    return this.#eventMap.get(event.constructor as EventTypes);
+    return this.#eventMap.get(event.constructor as typeof WorkflowEvent);
   }
 
   get running(): boolean {
@@ -76,9 +82,9 @@ export class Context<Start = string>
 
   collectEvents(
     event: WorkflowEvent,
-    expected: EventTypes[],
+    expected: (typeof WorkflowEvent<any>)[],
   ): WorkflowEvent[] | null {
-    const eventType = event.constructor as EventTypes;
+    const eventType = event.constructor as typeof WorkflowEvent;
     if (!this.#eventBuffer.has(eventType)) {
       this.#eventBuffer.set(eventType, []);
     }
@@ -98,7 +104,7 @@ export class Context<Start = string>
 
     // Put back the events if unable to collect all
     for (const ev of retval) {
-      const eventType = ev.constructor as EventTypes;
+      const eventType = ev.constructor as typeof WorkflowEvent;
       if (!this.#eventBuffer.has(eventType)) {
         this.#eventBuffer.set(eventType, []);
       }
@@ -121,7 +127,6 @@ export class Context<Start = string>
     this.#queue.push(event);
   }
 
-  // make sure it will only be called once
   #iterator: AsyncGenerator<WorkflowEvent, void, void> | null = null;
   #signal: AbortSignal | null = null;
   get #iteratorSingleton(): AsyncGenerator<WorkflowEvent, void, void> {

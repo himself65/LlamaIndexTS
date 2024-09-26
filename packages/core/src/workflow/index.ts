@@ -5,4 +5,4 @@ export {
   WorkflowEvent,
   type EventTypes,
 } from "./events";
-export { Workflow } from "./workflow";
+export { WorkflowTemplate } from "./workflow";
